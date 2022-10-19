@@ -19,7 +19,9 @@ const createUser = async function (req, res) {
 				.status(400)
 				.send({ status: false, message: "Please provide profileImage" });
 
-		const fileTypes = ["image/png", "image/jpeg"];
+		const fileTypes = ["image/png", "image/jpeg", "image/jpg"];
+		console.log(imageFile);
+		
 		if (validate.acceptFileType(imageFile, fileTypes))
 			return res.status(400).send({
 				status: false,
@@ -41,6 +43,7 @@ const createUser = async function (req, res) {
 
 		data.address = JSON.parse(data.address);
 		if (
+	
 			typeof data.address !== "object" ||
 			typeof data.address.shipping !== "object" ||
 			typeof data.address.billing !== "object"
@@ -192,9 +195,9 @@ const userLogin = async function (req, res) {
 		const token = jwt.sign(
 			{
 				userId: user._id,
-				expiresIn: "1h",
 			},
-			"Group-10 secret key"
+			"Group-10 secret key",
+			{ expiresIn: "1h" }
 		);
 
 		return res.status(200).send({
@@ -295,8 +298,7 @@ const updateUser = async (req, res) => {
 		if (data.address) {
 			data.address = JSON.parse(data.address);
 			if (
-				typeof data.address !== "object" ||
-				data.address.trim().length === 0
+				typeof data.address !== "object" 
 			) {
 				return res
 					.status(400)
@@ -329,7 +331,7 @@ const updateUser = async (req, res) => {
 				}
 
 				if (shipping.pincode) {
-					if (!validate.isValidPincode(shipping.pincode)) {
+					if (!validate.isPincodeValid(shipping.pincode)) {
 						return res
 							.status(400)
 							.send({ status: false, message: "please enter valid pincode" });
@@ -365,7 +367,7 @@ const updateUser = async (req, res) => {
 				}
 
 				if (billing.pincode) {
-					if (!validate.isValidPincode(billing.pincode)) {
+					if (!validate.isPincodeValid(billing.pincode)) {
 						return res.status(400).send({
 							status: false,
 							message: "please enter valid billing pincode",
@@ -379,7 +381,7 @@ const updateUser = async (req, res) => {
 			}
 		}
 
-		let updatedUser = await User.findOneAndUpdate({ _id: userId }, data, {
+		let updatedUser = await User.findByIdAndUpdate(userId, data, {
 			new: true,
 		});
 		return res.status(200).send({

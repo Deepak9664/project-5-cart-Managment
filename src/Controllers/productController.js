@@ -200,12 +200,13 @@ const getProduct = async (req, res) => {
 						)}`,
 					});
 			}
-			userQuery.availableSizes = { $all: [...availableSizes] };
+			userQuery.availableSizes = { $in: [...availableSizes] };
 			delete userQuery.size;
 		}
 
 		if (name) {
 			name = new RegExp(name, "i");
+			console.log(name)
 			userQuery["title"] = { $regex: name };
 		}
 
@@ -314,8 +315,8 @@ const updateProduct = async (req, res) => {
 
 		if (productData.isFreeShipping) {
 			if (
-				productData.isFreeShipping != true ||
-				productData.isFreeShipping != false
+				productData.isFreeShipping != "true" &&
+				productData.isFreeShipping != "false"
 			)
 				return res.status(400).send({
 					status: false,
