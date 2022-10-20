@@ -7,8 +7,10 @@ const product = require("../Controllers/productController");
 const cart = require("../Controllers/cartController");
 const order = require("../Controllers/orderController");
 
+//USER APIs
 router.post("/register", user.createUser);
 router.post("/login", user.userLogin);
+router.get("/user/:userId/profile", auth.authentication, user.getUser);
 router.put(
 	"/user/:userId/profile",
 	auth.authentication,
@@ -16,12 +18,14 @@ router.put(
 	user.updateUser
 );
 
+//PRODUCT APIs
 router.post("/products", product.createProduct);
 router.get("/products", product.getProduct);
-router.put("/products/:productId", product.updateProduct);
 router.get("/products/:productId", product.getProductById);
+router.put("/products/:productId", product.updateProduct);
 router.delete("/products/:productId", product.deleteProductById);
 
+//CART APIs
 router.post(
 	"/users/:userId/cart",
 	auth.authentication,
@@ -47,11 +51,11 @@ router.delete(
 	cart.deleteCart
 );
 
+//ORDER APIs
 router.post(
 	"/users/:userId/orders",
 	auth.authentication,
 	auth.authorizationFromParams,
-	auth.authorizationFromBody,
 	order.createOrder
 );
 router.put(
@@ -62,7 +66,7 @@ router.put(
 );
 
 router.all("/*", (req, res) =>
-	res.send("Invalid URL. Try the ones from the project")
+	res.send("Invalid URL. Try the ones from the README.md")
 );
 
 module.exports = router;

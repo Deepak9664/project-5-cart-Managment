@@ -20,15 +20,21 @@ const createUser = async function (req, res) {
 				.send({ status: false, message: "Please provide profileImage" });
 
 		const fileTypes = ["image/png", "image/jpeg", "image/jpg"];
-		console.log(imageFile);
-		
+
 		if (validate.acceptFileType(imageFile, fileTypes))
 			return res.status(400).send({
 				status: false,
 				message: `Invalid profileImage type. Please upload a jpg, jpeg or png file.`,
 			});
 
-		const mandatoryFields = ["fname", "lname", "email", "phone", "password"];
+		const mandatoryFields = [
+			"fname",
+			"lname",
+			"email",
+			"phone",
+			"password",
+			"address",
+		];
 
 		for (field of mandatoryFields) {
 			if (!data[field])
@@ -41,17 +47,17 @@ const createUser = async function (req, res) {
 					.send({ status: false, message: `Please provide a valid ${field}` });
 		}
 
-		data.address = JSON.parse(data.address);
 		if (
-	
-			typeof data.address !== "object" ||
-			typeof data.address.shipping !== "object" ||
-			typeof data.address.billing !== "object"
-		) {
-			return res
-				.status(400)
-				.send({ status: false, message: "address should be an object" });
-		}
+			!validate.isValidJSONstr(data.address) ||
+			typeof JSON.parse(data.address) !== "object"
+		)
+			return res.status(400).send({
+				status: false,
+				message:
+					"address should be a valid object with correct format and details",
+			});
+
+		data.address = JSON.parse(data.address);
 
 		const mandatoryAddressFields = ["street", "city", "pincode"];
 
@@ -59,14 +65,14 @@ const createUser = async function (req, res) {
 			if (!data.address.shipping[field])
 				return res
 					.status(400)
-					.send({ status: false, message: `Please provide ${field}` });
+					.send({ status: false, message: `Please provide shipping ${field}` });
 		}
 
 		for (field of mandatoryAddressFields) {
 			if (!data.address.billing[field])
 				return res
 					.status(400)
-					.send({ status: false, message: `Please provide ${field}` });
+					.send({ status: false, message: `Please provide billing ${field}` });
 		}
 
 		const stringAddressFields = ["street", "city"];
@@ -86,18 +92,12 @@ const createUser = async function (req, res) {
 				});
 		}
 
-		if (
-			typeof data.address.shipping.pincode !== "number" &&
-			!validate.isPincodeValid(data.shipping.pincode.trim())
-		)
+		if (!validate.isPincodeValid(data.address.shipping.pincode))
 			return res
 				.status(400)
 				.send({ status: false, message: "Invalid shipping pincode" });
 
-		if (
-			typeof data.address.billing.pincode !== "number" &&
-			!validate.isPincodeValid(data.billing.pincode.trim())
-		)
+		if (!validate.isPincodeValid(data.address.billing.pincode))
 			return res
 				.status(400)
 				.send({ status: false, message: "Invalid billing pincode" });
@@ -210,14 +210,35 @@ const userLogin = async function (req, res) {
 	}
 };
 
+const getUser = async function (req, res) {
+	try {
+		const userId = req.params.userId;
+		const findUser = await User.findById(userId);
+		if (!findUser)
+			res.status(404).send({
+				status: false,
+				message: `User with the given userId: ${userId} not found`,
+			});
+		return res
+			.status(200)
+			.send({ status: true, message: "Success", data: findUser });
+	} catch (error) {
+		res.status(500).send({ status: false, message: error.message });
+	}
+};
+
 const updateUser = async (req, res) => {
 	try {
 		let userId = req.params.userId;
 		let data = req.body;
 		let files = req.files;
 
-		if (!validate.isValidObjectId(userId))
-			return res.status(400).send({ status: false, message: "Invalid UserId" });
+		//validating the request body
+		if (!validate.isValidInputBody(data))
+			return res.status(400).send({
+				status: false,
+				message: "Enter details to update your account data",
+			});
 
 		const isUserPresent = await User.findById(userId);
 		if (!isUserPresent)
@@ -227,16 +248,16 @@ const updateUser = async (req, res) => {
 
 		//getting the AWS-S3 link after uploading the user's profileImage
 		if (files && files.length != 0) {
+			const fileTypes = ["image/png", "image/jpeg", "image/jpg"];
+			if (validate.acceptFileType(imageFile, fileTypes))
+				return res.status(400).send({
+					status: false,
+					message: `Invalid profileImage type. Please upload a jpg, jpeg or png file.`,
+				});
+
 			let profileImgUrl = await aws.uploadFile(files[0]);
 			data.profileImage = profileImgUrl;
 		}
-
-		//validating the request body
-		if (!validate.isValidInputBody(data))
-			return res.status(400).send({
-				status: false,
-				message: "Enter details to update your account data",
-			});
 
 		if (typeof fname == "string") {
 			//validating firstname
@@ -296,14 +317,15 @@ const updateUser = async (req, res) => {
 		}
 
 		if (data.address) {
-			data.address = JSON.parse(data.address);
 			if (
-				typeof data.address !== "object" 
+				!validate.isValidJSONstr(data.address) ||
+				typeof JSON.parse(data.address) !== "object"
 			) {
 				return res
 					.status(400)
 					.send({ status: false, message: "address should be a valid object" });
 			}
+			data.address = JSON.parse(data.address);
 
 			let { shipping, billing } = data.address;
 
@@ -394,4 +416,4 @@ const updateUser = async (req, res) => {
 	}
 };
 
-module.exports = { createUser, userLogin, updateUser };
+module.exports = { createUser, userLogin, updateUser, getUser };

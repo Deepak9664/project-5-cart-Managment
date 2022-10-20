@@ -8,7 +8,7 @@ const authentication = (req, res, next) => {
 		if (!bearerToken) {
 			return res.status(400).send({
 				status: false,
-				msg: "Token required!",
+				msg: "Bearer token required!",
 			});
 		}
 		let BearerToken = bearerToken.split(" ");
@@ -51,32 +51,7 @@ const authorizationFromParams = async (req, res, next) => {
 	}
 };
 
-const authorizationFromBody = async (req, res, next) => {
-	try {
-		let loggedInUser = req.decodedToken.userId;
-
-		if (req.body.userId) {
-			if (!validate.isValidObjectId(req.body.userId))
-				return res
-					.status(400)
-					.send({ status: false, message: "Enter a valid user Id" });
-			authorizeuser = req.body.userId;
-			if (loggedInUser !== authorizeuser)
-				return res
-					.status(403)
-					.send({ status: false, message: "Error!! authorization failed" });
-		} else {
-			return res
-				.status(400)
-				.send({ status: false, message: "Please provide userId in body" });
-		}
-		next();
-	} catch (error) {
-		return res.status(500).send({ status: false, error: error.message });
-	}
-};
 module.exports = {
 	authentication,
 	authorizationFromParams,
-	authorizationFromBody,
 };

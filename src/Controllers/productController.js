@@ -44,19 +44,19 @@ const createProduct = async (req, res) => {
 		} else if (!reg.test(productData.price)) {
 			return res
 				.status(400)
-				.send({ status: false, message: "Invalid price format" });
+				.send({ status: false, message: "Invalid price input" });
 		} else {
 			productData.price = Number(productData.price);
 		}
 
 		if (
 			!validate.isValidJSONstr(productData.availableSizes) ||
-			productData.availableSizes.trim().length === 0 ||
 			typeof JSON.parse(productData.availableSizes) !== "object"
 		)
 			return res.status(400).send({
 				status: false,
-				message: "Please provide available sizes in an array",
+				message:
+					"Please provide available sizes in an array and a JSON parseable format",
 			});
 
 		let availableSizes = JSON.parse(productData.availableSizes).map((x) =>
@@ -80,11 +80,12 @@ const createProduct = async (req, res) => {
 					status: false,
 					message: `Please provide a valid currencyId`,
 				});
-			if (productData.currencyId != "INR")
+			if (productData.currencyId != "INR" && productData.currencyId != "inr")
 				return res.status(400).send({
 					status: false,
 					message: "currencyId should be INR",
 				});
+			productData.currencyId = "INR";
 		}
 
 		if (productData.currencyFormat) {
@@ -113,12 +114,12 @@ const createProduct = async (req, res) => {
 
 		if (productData.isFreeShipping) {
 			if (
-				productData.isFreeShipping != "true" ||
+				productData.isFreeShipping != "true" &&
 				productData.isFreeShipping != "false"
 			)
 				return res.status(400).send({
 					status: false,
-					message: "Please give a true or false value",
+					message: "Please give a true or false value for isFreeShipping",
 				});
 			if (productData.isFreeShipping == "true")
 				productData.isFreeShipping = true;
@@ -156,9 +157,11 @@ const getProduct = async (req, res) => {
 			});
 			if (product.length === 0)
 				return res.status(404).send({ status: false, msg: "No product found" });
-			return res
-				.status(200)
-				.send({ status: true, message: "Success", data: product });
+			return res.status(200).send({
+				status: true,
+				message: `${product.length} product(s) found`,
+				data: product,
+			});
 		}
 
 		const queryFields = Object.keys(userQuery);
@@ -206,7 +209,7 @@ const getProduct = async (req, res) => {
 
 		if (name) {
 			name = new RegExp(name, "i");
-			console.log(name)
+			console.log(name);
 			userQuery["title"] = { $regex: name };
 		}
 
@@ -261,6 +264,30 @@ const getProduct = async (req, res) => {
 		});
 	} catch (error) {
 		return res.status(500).send({ status: false, message: error.message });
+	}
+};
+
+const getProductById = async (req, res) => {
+	try {
+		if (!validate.isValidObjectId(req.params.productId)) {
+			return res
+				.status(400)
+				.send({ status: false, message: "Please enter valid product id" });
+		}
+		let totalProducts = await Product.findOne({
+			_id: req.params.productId,
+			isDeleted: false,
+		}).select({ deletedAt: 0 });
+		if (!totalProducts)
+			return res
+				.status(404)
+				.send({ status: false, message: "Product not found or deleted" });
+		return res
+			.status(200)
+			.send({ status: true, message: "Success", data: totalProducts });
+	} catch (error) {
+		console.log(error);
+		return res.status(500).send({ status: false, msg: error.message });
 	}
 };
 
@@ -328,7 +355,10 @@ const updateProduct = async (req, res) => {
 		}
 
 		if (productData.availableSizes) {
-			if (typeof JSON.parse(productData.availableSizes) !== "object")
+			if (
+				!validate.isValidJSONstr(data.address) ||
+				typeof JSON.parse(data.address) !== "object"
+			)
 				return res.status(400).send({
 					status: false,
 					message: "Please provide available sizes in an array",
@@ -357,7 +387,7 @@ const updateProduct = async (req, res) => {
 					status: false,
 					message: `Please provide a valid currencyId`,
 				});
-			if (productData.currencyId != "INR")
+			if (productData.currencyId != "INR" && productData.currencyId != "inr")
 				return res.status(400).send({
 					status: false,
 					message: "currencyId should be INR",
@@ -384,6 +414,7 @@ const updateProduct = async (req, res) => {
 					.status(400)
 					.send({ status: false, message: "Title already present" });
 		}
+
 		if (productImage.length > 0) {
 			const fileTypes = ["image/png", "image/jpeg"];
 			if (validate.acceptFileType(productImage, fileTypes))
@@ -408,30 +439,6 @@ const updateProduct = async (req, res) => {
 	}
 };
 
-const getProductById = async (req, res) => {
-	try {
-		if (!validate.isValidObjectId(req.params.productId)) {
-			return res
-				.status(400)
-				.send({ status: false, message: "Please enter valid product id" });
-		}
-		let totalProducts = await Product.findOne({
-			_id: req.params.productId,
-			isDeleted: false,
-		}).select({ deletedAt: 0 });
-		if (!totalProducts)
-			return res
-				.status(404)
-				.send({ status: false, message: "Product not found or deleted" });
-		return res
-			.status(200)
-			.send({ status: true, message: "Success", data: totalProducts });
-	} catch (error) {
-		console.log(error);
-		return res.status(500).send({ status: false, msg: error.message });
-	}
-};
-
 const deleteProductById = async (req, res) => {
 	try {
 		const productId = req.params.productId;
@@ -445,7 +452,7 @@ const deleteProductById = async (req, res) => {
 				.send({ status: false, message: "Invalid ObjectId: productId" });
 		const deleteProduct = await Product.findOneAndUpdate(
 			{ _id: productId, isDeleted: false },
-			{ isDeleted: true },
+			{ isDeleted: true, deletedAt: new Date() },
 			{ new: true }
 		);
 		if (!deleteProduct)
