@@ -27,7 +27,7 @@ const createOrder = async function (req, res) {
 		if (findCart.items.length < 1)
 			return res.status(404).send({
 				status: false,
-				message: "Empty cart. Add items to cart to proceed.",
+				message: "Empty cart. Add items in cart to proceed.",
 			});
 
 		if (status && status !== "pending")
@@ -36,6 +36,14 @@ const createOrder = async function (req, res) {
 				message: `status can only be pending`,
 			});
 
+			const cartDetails = {
+				items: findCart.items,
+				totalPrice: findCart.totalPrice,
+				totalItems: findCart.totalItems,
+				totalQuantity: 0,
+				userId,
+			};
+			
 		if (cancellable) {
 			if (cancellable != "true" && cancellable != "false") {
 				return res.status(400).send({
@@ -43,16 +51,9 @@ const createOrder = async function (req, res) {
 					message: "cancellable can either be true or false",
 				});
 			}
-			if (cartId.cancellable === "false") cartId.cancellable = false;
+			if (cancellable === "false") cartDetails.cancellable = false;
 		}
 
-		const cartDetails = {
-			items: findCart.items,
-			totalPrice: findCart.totalPrice,
-			totalItems: findCart.totalItems,
-			totalQuantity: 0,
-			userId,
-		};
 
 		for (item of findCart.items) {
 			cartDetails.totalQuantity += item.quantity;
@@ -62,6 +63,7 @@ const createOrder = async function (req, res) {
 		findCart.totalItems = 0;
 		findCart.totalPrice = 0;
 		const deleteCart = await Cart.findByIdAndUpdate(cartId, findCart);
+
 		const createOrder = await Order.create(cartDetails);
 		return res.status(201).send({
 			status: true,
@@ -79,6 +81,7 @@ const updateOrder = async function (req, res) {
 			return res
 				.status(400)
 				.send({ status: false, message: "Please provide updation details" });
+
 		const { orderId, status } = req.body;
 		const userId = req.params.userId;
 		if (
@@ -110,10 +113,7 @@ const updateOrder = async function (req, res) {
 				status: false,
 				message: "Order with the given orderId not found",
 			});
-		if (status == "cancelled" && !isOrderPresent.cancellable)
-			return res
-				.status(400)
-				.send({ status: false, message: "The order is not cancellable" });
+				
 		if (isOrderPresent.status === "cancelled")
 			return res
 				.status(400)
@@ -123,6 +123,11 @@ const updateOrder = async function (req, res) {
 				.status(400)
 				.send({ status: false, message: "Order has already been completed" });
 
+				if (status == "cancelled" && !isOrderPresent.cancellable)
+				return res
+					.status(400)
+					.send({ status: false, message: "The order is not cancellable" });
+	
 		const updateOrder = await Order.findByIdAndUpdate(
 			orderId,
 			{ status },
