@@ -356,8 +356,8 @@ const updateProduct = async (req, res) => {
 
 		if (productData.availableSizes) {
 			if (
-				!validate.isValidJSONstr(data.address) ||
-				typeof JSON.parse(data.address) !== "object"
+				!validate.isValidJSONstr(productData.availableSizes) ||
+				typeof JSON.parse(productData.availableSizes) !== "object"
 			)
 				return res.status(400).send({
 					status: false,
